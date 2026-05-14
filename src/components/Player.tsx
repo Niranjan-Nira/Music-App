@@ -79,7 +79,7 @@ export function Player() {
             onClick={togglePlay}
             className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center bg-white rounded-full text-black hover:scale-105 transition-all shadow-lg"
           >
-            {isPlaying ? <Pause size={20} md:size={18} fill="black" /> : <Play size={20} md:size={18} fill="black" className="ml-0.5" />}
+            {isPlaying ? <Pause className="w-5 h-5 md:w-4.5 md:h-4.5" fill="black" /> : <Play className="w-5 h-5 md:w-4.5 md:h-4.5 ml-0.5" fill="black" />}
           </button>
           <button 
             onClick={playNext}

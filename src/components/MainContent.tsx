@@ -123,15 +123,15 @@ export function MainContent() {
               className="text-spotify-light hover:text-spotify-green transition-all hover:scale-110"
               title="Shuffle"
             >
-              <Shuffle size={24} md:size={28} />
+              <Shuffle className="w-6 h-6 md:w-7 md:h-7" />
             </button>
             <button 
               onClick={() => setIsLiked(!isLiked)}
               className={`transition-all hover:scale-110 ${isLiked ? 'text-spotify-green' : 'text-spotify-light hover:text-white'}`}
             >
-              <Heart size={28} md:size={32} fill={isLiked ? "currentColor" : "none"} />
+              <Heart className="w-7 h-7 md:w-8 md:h-8" fill={isLiked ? "currentColor" : "none"} />
             </button>
-            <button className="text-spotify-light hover:text-white transition-colors hover:scale-110"><MoreHorizontal size={28} md:size={32} /></button>
+            <button className="text-spotify-light hover:text-white transition-colors hover:scale-110"><MoreHorizontal className="w-7 h-7 md:w-8 md:h-8" /></button>
           </div>
 
           {/* Table */}
@@ -140,7 +140,7 @@ export function MainContent() {
               <div>#</div>
               <div>Title</div>
               <div className="hidden md:block">Album</div>
-              <div className="flex justify-end"><Clock size={14} md:size={16} /></div>
+              <div className="flex justify-end"><Clock className="w-3.5 h-3.5 md:w-4 md:h-4" /></div>
             </div>
             {activePlaylist.songs.map((song, index) => (
               <div 
@@ -158,7 +158,7 @@ export function MainContent() {
                 </div>
                 <div className="hidden md:block text-sm truncate">{song.album || 'Unknown Album'}</div>
                 <div className="flex justify-end items-center gap-2 md:gap-4">
-                  <PlusCircle size={14} md:size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <PlusCircle className="w-3.5 h-3.5 md:w-4 md:h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                   <span className="text-xs md:text-sm">3:45</span>
                 </div>
               </div>
@@ -203,7 +203,7 @@ export function MainContent() {
               </div>
               <div className="absolute right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all translate-y-0 md:translate-y-2 md:group-hover:translate-y-0 shadow-xl">
                 <div className="w-8 h-8 md:w-10 md:h-10 bg-spotify-green rounded-full flex items-center justify-center text-black">
-                  <Play fill="black" size={16} md:size={20} className="ml-1" />
+                  <Play fill="black" className="w-4 h-4 md:w-5 md:h-5 ml-1" />
                 </div>
               </div>
             </div>
@@ -236,7 +236,7 @@ export function MainContent() {
                   <img src={song.coverUrl} className="w-full aspect-square object-cover rounded-md shadow-2xl" alt="" />
                   <div className="absolute bottom-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all translate-y-0 md:translate-y-2 md:group-hover:translate-y-0 shadow-xl">
                     <div className="w-10 h-10 md:w-12 md:h-12 bg-spotify-green rounded-full flex items-center justify-center text-black shadow-2xl">
-                      <Play fill="black" size={20} md:size={24} className="ml-1" />
+                      <Play fill="black" className="w-5 h-5 md:w-6 md:h-6 ml-1" />
                     </div>
                   </div>
                 </div>
