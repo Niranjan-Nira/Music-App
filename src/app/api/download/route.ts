@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
 // @ts-ignore
 const play = require('play-dl');
-// @ts-ignore
-const youtubedl = require('youtube-dl-exec');
 import cloudinary from '@/lib/cloudinary';
 
-// Helper to ensure binary is executable on Linux (Vercel)
-// Since node_modules is read-only on Vercel, we copy to /tmp and set permissions there
+const execAsync = promisify(exec);
+
+// Helper to prepare executable in /tmp for Vercel
 function getExecutablePath(originalPath: string) {
   if (process.platform === 'win32') return originalPath;
   
@@ -22,18 +23,14 @@ function getExecutablePath(originalPath: string) {
     if (!fs.existsSync(tempBinDir)) fs.mkdirSync(tempBinDir, { recursive: true });
     
     const targetPath = path.join(tempBinDir, path.basename(originalPath));
-    
-    // Copy if it doesn't exist or we need to ensure fresh permissions
     if (!fs.existsSync(targetPath)) {
-      console.log(`Copying ${originalPath} to ${targetPath}`);
       fs.copyFileSync(originalPath, targetPath);
     }
-    
     fs.chmodSync(targetPath, '755');
     return targetPath;
   } catch (err) {
     console.error(`Failed to prepare executable ${originalPath}:`, err);
-    return originalPath; // Fallback to original
+    return originalPath; 
   }
 }
 
@@ -58,73 +55,49 @@ export async function POST(request: Request) {
     const videoUrl = targetVideo.url;
     console.log(`Found YouTube video: ${targetVideo.title} (${videoUrl})`);
 
-    // Step 2: Download audio stream to a temporary file
-    console.log(`Downloading audio to temporary file...`);
+    // Step 2: Download and Convert
+    console.log(`Preparing to download and convert...`);
     
-    // Fix for Next.js/Vercel binary resolution
     const isWin = process.platform === 'win32';
-    
-    const ytPath = path.join(
-      process.cwd(), 
-      'node_modules', 
-      'youtube-dl-exec', 
-      'bin', 
-      isWin ? 'yt-dlp.exe' : 'yt-dlp'
-    );
-    
-    const ffmpegPath = path.join(
+    const ffmpegOriginalPath = path.join(
       process.cwd(), 
       'node_modules', 
       'ffmpeg-static', 
       isWin ? 'ffmpeg.exe' : 'ffmpeg'
     );
-
-    // Prepare executables in /tmp for Vercel
-    const ytExecPath = getExecutablePath(ytPath);
-    const ffmpegExecPath = getExecutablePath(ffmpegPath);
-
-    const yt = youtubedl.create(ytExecPath);
+    const ffmpegPath = getExecutablePath(ffmpegOriginalPath);
 
     const os = require('os');
     const tempFile = path.join(os.tmpdir(), `dl-${Date.now()}.mp3`);
 
-    console.log(`Using yt-dlp at: ${ytExecPath}`);
-    console.log(`Using ffmpeg at: ${ffmpegExecPath}`);
+    // Use play-dl to get the stream and pipe it to ffmpeg
+    const stream = await play.stream(videoUrl);
+    
+    console.log(`Running ffmpeg conversion...`);
+    
+    // Using ffmpeg to download and convert in one go
+    // -i: input url, -vn: no video, -ab: bitrate, -ar: frequency, -f: format
+    const ffmpegCmd = `"${ffmpegPath}" -i "${stream.url}" -vn -ab 128k -ar 44100 -y "${tempFile}"`;
+    
+    await execAsync(ffmpegCmd);
 
-    await yt(videoUrl, {
-      extractAudio: true,
-      audioFormat: 'mp3',
-      output: tempFile, 
-      ffmpegLocation: ffmpegExecPath, 
-      noPlaylist: true,
-    });
-
-    // yt-dlp might change the extension based on actual format if it couldn't convert,
-    let finalFile = tempFile;
     if (!fs.existsSync(tempFile)) {
-       // fallback just in case yt-dlp added a weird extension
-       const files = fs.readdirSync(os.tmpdir()).filter((f: string) => f.startsWith(path.basename(tempFile, '.mp3')));
-       if (files.length > 0) finalFile = path.join(os.tmpdir(), files[0]);
+      throw new Error("FFmpeg failed to create the MP3 file.");
     }
 
-    const buffer = fs.readFileSync(finalFile);
-    fs.unlinkSync(finalFile); // Cleanup
-
-    if (buffer.length === 0) {
-      throw new Error("Downloaded audio buffer is empty.");
-    }
+    const buffer = fs.readFileSync(tempFile);
+    fs.unlinkSync(tempFile); // Cleanup
 
     console.log(`Buffered audio (${buffer.length} bytes), uploading to Cloudinary...`);
 
-    // Sanitize metadata for Cloudinary context (no pipes or equals in values)
     const safeArtist = (artist || 'Unknown Artist').replace(/[|=]/g, '-');
     const safeAlbum = (album || 'Unknown Album').replace(/[|=]/g, '-');
 
-    // Step 3: Upload to Cloudinary with metadata context
+    // Step 3: Upload to Cloudinary
     const uploadResult = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          resource_type: 'video', // Audio files are uploaded as 'video' in Cloudinary
+          resource_type: 'video',
           folder: 'musicify_downloads',
           public_id: `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}`,
           context: `artist=${safeArtist}|album=${safeAlbum}`,
@@ -145,7 +118,7 @@ export async function POST(request: Request) {
       url: secureUrl,
       artist: artist || 'Unknown Artist',
       album: album || 'Unknown Album',
-      message: 'Downloaded from YouTube and uploaded to Cloudinary successfully'
+      message: 'Processed and uploaded successfully'
     });
 
   } catch (error: any) {
