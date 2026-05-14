@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --color-spotify-green: #FF8100;
+  --color-spotify-green-hover: #ff9e2b;
+  --color-spotify-black: #121212;
+  --color-spotify-dark: #181818;
+  --color-spotify-darker: #282828;
+  --color-spotify-light: #b3b3b3;
+  --color-spotify-white: #ffffff;
+}
+
+@layer base {
+  body {
+    @apply bg-spotify-black text-spotify-white font-sans;
+  }
+}
+
+/* Custom Scrollbar for a premium feel */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Utility to hide scrollbar but keep functionality */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
