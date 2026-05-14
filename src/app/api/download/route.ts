@@ -1,11 +1,23 @@
 import { NextResponse } from 'next/server';
+import 'cheerio'; // Force Vercel to bundle cheerio
 // @ts-ignore
 import yts from 'yt-search';
 // @ts-ignore
 import youtubedl from 'youtube-dl-exec';
 import cloudinary from '@/lib/cloudinary';
-
 import path from 'path';
+import fs from 'fs';
+
+// Helper to ensure binary is executable on Linux (Vercel)
+function ensureExecutable(filePath: string) {
+  try {
+    if (process.platform !== 'win32' && fs.existsSync(filePath)) {
+      fs.chmodSync(filePath, '755');
+    }
+  } catch (err) {
+    console.error(`Failed to set permissions for ${filePath}:`, err);
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -50,10 +62,13 @@ export async function POST(request: Request) {
       isWin ? 'ffmpeg.exe' : 'ffmpeg'
     );
 
+    // Ensure permissions on Linux
+    ensureExecutable(ytPath);
+    ensureExecutable(ffmpegPath);
+
     const yt = youtubedl.create(ytPath);
 
     const os = require('os');
-    const fs = require('fs');
     const tempFile = path.join(os.tmpdir(), `dl-${Date.now()}.mp3`);
 
     console.log(`Using yt-dlp at: ${ytPath}`);
