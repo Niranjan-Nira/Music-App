@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
+// @ts-ignore
 import yts from 'yt-search';
+// @ts-ignore
 import youtubedl from 'youtube-dl-exec';
 import cloudinary from '@/lib/cloudinary';
 
