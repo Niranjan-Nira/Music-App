@@ -9,13 +9,31 @@ const youtubedl = require('youtube-dl-exec');
 import cloudinary from '@/lib/cloudinary';
 
 // Helper to ensure binary is executable on Linux (Vercel)
-function ensureExecutable(filePath: string) {
+// Since node_modules is read-only on Vercel, we copy to /tmp and set permissions there
+function getExecutablePath(originalPath: string) {
+  if (process.platform === 'win32') return originalPath;
+  
+  const os = require('os');
+  const fs = require('fs');
+  const path = require('path');
+  
   try {
-    if (process.platform !== 'win32' && fs.existsSync(filePath)) {
-      fs.chmodSync(filePath, '755');
+    const tempBinDir = path.join(os.tmpdir(), 'bin');
+    if (!fs.existsSync(tempBinDir)) fs.mkdirSync(tempBinDir, { recursive: true });
+    
+    const targetPath = path.join(tempBinDir, path.basename(originalPath));
+    
+    // Copy if it doesn't exist or we need to ensure fresh permissions
+    if (!fs.existsSync(targetPath)) {
+      console.log(`Copying ${originalPath} to ${targetPath}`);
+      fs.copyFileSync(originalPath, targetPath);
     }
+    
+    fs.chmodSync(targetPath, '755');
+    return targetPath;
   } catch (err) {
-    console.error(`Failed to set permissions for ${filePath}:`, err);
+    console.error(`Failed to prepare executable ${originalPath}:`, err);
+    return originalPath; // Fallback to original
   }
 }
 
@@ -61,23 +79,23 @@ export async function POST(request: Request) {
       isWin ? 'ffmpeg.exe' : 'ffmpeg'
     );
 
-    // Ensure permissions on Linux
-    ensureExecutable(ytPath);
-    ensureExecutable(ffmpegPath);
+    // Prepare executables in /tmp for Vercel
+    const ytExecPath = getExecutablePath(ytPath);
+    const ffmpegExecPath = getExecutablePath(ffmpegPath);
 
-    const yt = youtubedl.create(ytPath);
+    const yt = youtubedl.create(ytExecPath);
 
     const os = require('os');
     const tempFile = path.join(os.tmpdir(), `dl-${Date.now()}.mp3`);
 
-    console.log(`Using yt-dlp at: ${ytPath}`);
-    console.log(`Using ffmpeg at: ${ffmpegPath}`);
+    console.log(`Using yt-dlp at: ${ytExecPath}`);
+    console.log(`Using ffmpeg at: ${ffmpegExecPath}`);
 
     await yt(videoUrl, {
       extractAudio: true,
       audioFormat: 'mp3',
-      output: tempFile, // Removed extra quotes, yt-dl-exec handles them
-      ffmpegLocation: ffmpegPath, // Removed extra quotes
+      output: tempFile, 
+      ffmpegLocation: ffmpegExecPath, 
       noPlaylist: true,
     });
 
