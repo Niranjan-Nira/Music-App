@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-// @ts-ignore
-import yts from 'yt-search';
-// @ts-ignore
-import youtubedl from 'youtube-dl-exec';
-import cloudinary from '@/lib/cloudinary';
 import path from 'path';
 import fs from 'fs';
+
+// @ts-ignore
+const play = require('play-dl');
+// @ts-ignore
+const youtubedl = require('youtube-dl-exec');
+import cloudinary from '@/lib/cloudinary';
 
 // Helper to ensure binary is executable on Linux (Vercel)
 function ensureExecutable(filePath: string) {
@@ -28,16 +29,15 @@ export async function POST(request: Request) {
 
     console.log(`Searching YouTube for: ${title} ${artist}`);
     
-    // Step 1: Search YouTube for the audio track
-    const searchResult = await yts(`${title} ${artist} official audio`);
-    const videos = searchResult.videos;
+    // Step 1: Search YouTube for the audio track using play-dl
+    const searchResult = await play.search(`${title} ${artist} official audio`, { limit: 1 });
     
-    if (!videos || videos.length === 0) {
+    if (!searchResult || searchResult.length === 0) {
       throw new Error("Could not find song on YouTube");
     }
 
-    const targetVideo = videos[0]; // Take the first result
-    const videoUrl = targetVideo.url.split('&')[0]; // Strip playlist/list parameters
+    const targetVideo = searchResult[0]; 
+    const videoUrl = targetVideo.url;
     console.log(`Found YouTube video: ${targetVideo.title} (${videoUrl})`);
 
     // Step 2: Download audio stream to a temporary file

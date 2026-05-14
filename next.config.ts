@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['yt-search', 'cheerio', 'youtube-dl-exec', 'ffmpeg-static', 'play-dl', '@distube/ytdl-core'],
+  serverExternalPackages: ['play-dl', '@distube/ytdl-core', 'youtube-dl-exec', 'ffmpeg-static'],
 };
 
 export default nextConfig;
