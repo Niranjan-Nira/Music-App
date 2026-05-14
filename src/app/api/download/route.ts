@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import * as cheerio from 'cheerio'; // Force use
-console.log('Cheerio loaded:', !!cheerio.load); 
 // @ts-ignore
 import yts from 'yt-search';
 // @ts-ignore
