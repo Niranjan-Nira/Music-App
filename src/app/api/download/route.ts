@@ -42,6 +42,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
+    // Step 0: Set YouTube Cookie if available
+    const youtubeCookie = process.env.YOUTUBE_COOKIE;
+    if (youtubeCookie) {
+      try {
+        await play.setToken({
+          youtube: {
+            cookie: youtubeCookie
+          }
+        });
+        console.log("YouTube cookie set successfully");
+      } catch (e) {
+        console.error("Failed to set YouTube cookie:", e);
+      }
+    }
+
     console.log(`Searching YouTube for: ${title} ${artist}`);
     
     // Step 1: Prime the connection and Search YouTube
