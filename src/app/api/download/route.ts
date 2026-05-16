@@ -44,8 +44,18 @@ export async function POST(request: Request) {
 
     console.log(`Searching YouTube for: ${title} ${artist}`);
     
-    // Step 1: Search YouTube for the audio track using play-dl
-    const searchResult = await play.search(`${title} ${artist} official audio`, { limit: 1 });
+    // Step 1: Prime the connection and Search YouTube
+    // Refresh token to help bypass bot detection
+    try {
+      await play.getFreeToken();
+    } catch (e) {
+      console.warn("Could not refresh play-dl token, proceeding anyway...");
+    }
+
+    const searchResult = await play.search(`${title} ${artist} official audio`, { 
+      limit: 1,
+      source: { youtube: 'video' } 
+    });
     
     if (!searchResult || searchResult.length === 0) {
       throw new Error("Could not find song on YouTube");
@@ -70,8 +80,12 @@ export async function POST(request: Request) {
     const os = require('os');
     const tempFile = path.join(os.tmpdir(), `dl-${Date.now()}.mp3`);
 
-    // Use play-dl to get the stream and pipe it to ffmpeg
-    const stream = await play.stream(videoUrl);
+    // Use play-dl to get the stream with anti-bot headers
+    const stream = await play.stream(videoUrl, {
+      quality: 1, // high quality
+      seek: 0,
+      htmldata: false // helps bypass some signature issues
+    });
     
     console.log(`Running ffmpeg conversion...`);
     
