@@ -83,7 +83,20 @@ function headerCookiesToNetscape(header: string): string {
 }
 
 function readCookiesContent(): string | undefined {
-  const netscape = process.env.YOUTUBE_COOKIES?.trim();
+  const base64 = process.env.YOUTUBE_COOKIES_BASE64?.trim();
+  if (base64) {
+    try {
+      return Buffer.from(base64, 'base64').toString('utf8');
+    } catch (e) {
+      console.error('Invalid YOUTUBE_COOKIES_BASE64:', e);
+    }
+  }
+
+  let netscape = process.env.YOUTUBE_COOKIES?.trim();
+  // Vercel sometimes stores multiline env vars with literal \n
+  if (netscape?.includes('\\n')) {
+    netscape = netscape.replace(/\\n/g, '\n');
+  }
   const legacyHeader = process.env.YOUTUBE_COOKIE?.trim();
 
   if (netscape) {
@@ -117,19 +130,47 @@ export function getCookiesFilePath(): string | undefined {
   return cookiesPath;
 }
 
-/** Parse JSON cookie array (EditThisCookie export) for ytdl-core agent. */
+function parseNetscapeForYtdl(content: string) {
+  return content
+    .split('\n')
+    .filter((line) => line && !line.startsWith('#'))
+    .map((line) => {
+      const p = line.split('\t');
+      if (p.length < 7) return null;
+      const domain = p[0];
+      if (!domain.includes('youtube.com')) return null;
+      return {
+        name: p[5],
+        value: p[6],
+        domain: domain.startsWith('.') ? domain.slice(1) : domain,
+        path: p[2] || '/',
+        secure: p[3]?.toUpperCase() === 'TRUE',
+        expirationDate: Number(p[4]) || undefined,
+      };
+    })
+    .filter((c): c is NonNullable<typeof c> => Boolean(c));
+}
+
+/** Parse cookies for ytdl-core fallback agent. */
 export function getYtdlAgent(): ReturnType<typeof ytdl.createAgent> | undefined {
   const json = process.env.YOUTUBE_COOKIES_JSON?.trim();
-  if (!json) return undefined;
-
-  try {
-    const cookies = JSON.parse(json);
-    if (Array.isArray(cookies) && cookies.length > 0) {
-      return ytdl.createAgent(cookies);
+  if (json) {
+    try {
+      const cookies = JSON.parse(json);
+      if (Array.isArray(cookies) && cookies.length > 0) {
+        return ytdl.createAgent(cookies);
+      }
+    } catch (e) {
+      console.error('Invalid YOUTUBE_COOKIES_JSON:', e);
     }
-  } catch (e) {
-    console.error('Invalid YOUTUBE_COOKIES_JSON:', e);
   }
+
+  const netscape = readCookiesContent();
+  if (netscape) {
+    const cookies = parseNetscapeForYtdl(netscape);
+    if (cookies.length > 0) return ytdl.createAgent(cookies);
+  }
+
   return undefined;
 }
 
@@ -231,6 +272,15 @@ export async function downloadWithYtdlCore(videoUrl: string, outputPath: string)
   return resolveOutputFile(outputPath);
 }
 
+export function extractErrorText(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const err = error as { message?: string; stderr?: string };
+    if (err.stderr) return err.stderr;
+    if (err.message) return err.message;
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
 export async function downloadYouTubeAudio(
   videoUrl: string,
   outputPath: string
@@ -238,14 +288,26 @@ export async function downloadYouTubeAudio(
   try {
     return await downloadWithYtDlp(videoUrl, outputPath);
   } catch (ytDlpError) {
-    console.warn('yt-dlp download failed, trying ytdl-core fallback:', ytDlpError);
-    return await downloadWithYtdlCore(videoUrl, outputPath);
+    const detail = extractErrorText(ytDlpError);
+    console.warn('yt-dlp download failed:', detail);
+
+    if (!hasYouTubeCookies()) {
+      throw new Error(getBotBlockHelpMessage());
+    }
+
+    if (getYtdlAgent()) {
+      console.warn('Trying ytdl-core fallback with cookies...');
+      return await downloadWithYtdlCore(videoUrl, outputPath);
+    }
+
+    throw new Error(detail || 'YouTube download failed');
   }
 }
 
 export function hasYouTubeCookies(): boolean {
   if (
     process.env.YOUTUBE_COOKIES?.trim() ||
+    process.env.YOUTUBE_COOKIES_BASE64?.trim() ||
     process.env.YOUTUBE_COOKIES_JSON?.trim() ||
     process.env.YOUTUBE_COOKIE?.trim()
   ) {

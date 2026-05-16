@@ -1,7 +1,8 @@
 {
   "functions": {
     "src/app/api/download/route.ts": {
-      "maxDuration": 60,
+      "maxDuration": 120,
+      "memory": 1024,
       "includeFiles": "node_modules/{ffmpeg-static,youtube-dl-exec}/**/*"
     }
   }

@@ -36,6 +36,7 @@ yarn-error.log*
 # YouTube session cookies (never commit)
 youtube-cookies.txt
 cookies.txt
+cookies-base64.txt
 
 # vercel
 .vercel

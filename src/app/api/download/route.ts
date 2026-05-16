@@ -6,6 +6,7 @@ import cloudinary from '@/lib/cloudinary';
 import {
   searchYouTube,
   downloadYouTubeAudio,
+  extractErrorText,
   getBotBlockHelpMessage,
   hasYouTubeCookies,
   isBotBlockError,
@@ -75,8 +76,8 @@ export async function POST(request: Request) {
       message: 'Processed and uploaded successfully',
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to process song';
-    console.error('Download/Upload Error:', error);
+    const message = extractErrorText(error);
+    console.error('Download/Upload Error:', message);
 
     const userMessage = isBotBlockError(message) ? getBotBlockHelpMessage() : message;
 
