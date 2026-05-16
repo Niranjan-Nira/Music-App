@@ -12,6 +12,11 @@ import {
   isBotBlockError,
 } from '@/lib/youtube-download';
 
+export const runtime = 'nodejs';
+export const maxDuration = 120;
+
+const STALE_PLAY_DL_ERROR = 'While getting info from url';
+
 export async function POST(request: Request) {
   try {
     const { title, artist, album } = await request.json();
@@ -78,6 +83,16 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     const message = extractErrorText(error);
     console.error('Download/Upload Error:', message);
+
+    if (message.includes(STALE_PLAY_DL_ERROR)) {
+      return NextResponse.json(
+        {
+          error:
+            'Production is still on old code (play-dl). In Vercel → Deployments → Redeploy the latest commit from GitHub main, then add YOUTUBE_COOKIES_BASE64. Check: /api/health should show downloadEngine "yt-dlp-v3".',
+        },
+        { status: 503 }
+      );
+    }
 
     const userMessage = isBotBlockError(message) ? getBotBlockHelpMessage() : message;
 

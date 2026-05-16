@@ -304,21 +304,22 @@ export async function downloadYouTubeAudio(
   }
 }
 
+function cookiesLookValid(content: string): boolean {
+  return (
+    content.includes('.youtube.com') &&
+    (content.includes('LOGIN_INFO') ||
+      content.includes('SID') ||
+      content.includes('__Secure-1PSID'))
+  );
+}
+
 export function hasYouTubeCookies(): boolean {
-  if (
-    process.env.YOUTUBE_COOKIES?.trim() ||
-    process.env.YOUTUBE_COOKIES_BASE64?.trim() ||
-    process.env.YOUTUBE_COOKIES_JSON?.trim() ||
-    process.env.YOUTUBE_COOKIE?.trim()
-  ) {
+  if (process.env.YOUTUBE_COOKIES_JSON?.trim() || process.env.YOUTUBE_COOKIE?.trim()) {
     return true;
   }
 
-  const filePath =
-    process.env.YOUTUBE_COOKIES_FILE?.trim() ||
-    path.join(process.cwd(), 'youtube-cookies.txt');
-
-  return Boolean(filePath && fs.existsSync(filePath));
+  const content = readCookiesContent();
+  return Boolean(content && cookiesLookValid(content));
 }
 
 export function getBotBlockHelpMessage(): string {
