@@ -4,6 +4,12 @@ import os from 'os';
 import youtubedl from 'youtube-dl-exec';
 import yts from 'yt-search';
 import ytdl from '@distube/ytdl-core';
+import * as cheerio from 'cheerio';
+
+// Force Next.js and Vercel dependency tracing to include cheerio (required by yt-search)
+if (typeof cheerio === 'undefined') {
+  console.log('cheerio fallback trace placeholder');
+}
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
