@@ -95,13 +95,30 @@ export async function POST(request: Request) {
     const os = require('os');
     const tempFile = path.join(os.tmpdir(), `dl-${Date.now()}.mp3`);
 
-    // Use play-dl to get the stream with anti-bot headers
-    const stream = await play.stream(videoUrl, {
-      quality: 1, // high quality
-      seek: 0,
-      htmldata: false // helps bypass some signature issues
-    });
+    // Use play-dl to get the stream with stealth measures
+    console.log(`Fetching stream for ${videoUrl}...`);
+    let stream;
+    let attempts = 0;
+    while (attempts < 2) {
+      try {
+        stream = await play.stream(videoUrl, {
+          quality: 1,
+          seek: 0,
+          htmldata: false,
+          precache: 15
+        });
+        if (stream) break;
+      } catch (e: any) {
+        attempts++;
+        console.warn(`Stream fetch attempt ${attempts} failed: ${e.message}`);
+        if (attempts >= 2) throw e;
+        // Wait a bit before retry
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
     
+    if (!stream) throw new Error("Failed to get audio stream from YouTube");
+
     console.log(`Running ffmpeg conversion...`);
     
     // Using ffmpeg to download and convert in one go
